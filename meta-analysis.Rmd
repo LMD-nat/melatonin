@@ -1,0 +1,1019 @@
+---
+title: "Melatonin meta-analysis"
+output: html_notebook
+---
+
+# Analysis file for meta analysis of melatonin for Neurocognitive disorders (TNC)
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook used to analyze the effect of melatonin on sleep and cognition among patients with neurocognitive disorders. 
+
+Code and information adapted from **Harrer, M., Cuijpers, P., Furukawa, T.A., & Ebert, D.D.** (2021). *Doing Meta-Analysis with R: A Hands-On Guide*. Boca Raton, FL and London: Chapman & Hall/CRC Press. ISBN 978-0-367-61007-4. [Online Book](https://bookdown.org/MathiasHarrer/Doing_Meta_Analysis_in_R/)
+
+##### Load dependencies
+
+```{r, eval = FALSE}
+if (!require("remotes")) {
+  install.packages("remotes")
+}
+remotes::install_github("MathiasHarrer/dmetar")
+```
+
+```{r Import packages}
+library(tidyverse)
+library(dmetar)
+library(meta)
+library(esc)
+```
+
+
+
+##### Sleep quality
+
+```{r Import data for sleep quality}
+library(readxl)
+sq <- read_excel("C:/Users/User/Desktop/meta-analysis/mmad.xlsx", 
+    sheet = "SleepQuality")
+```
+
+```{r Calculate effect size for each study of sleep quality}
+sq$effect_size <- rep(NA, nrow(sq))         # Create a new column for effect sizes
+sq$standard_error <- rep(NA, nrow(sq))      # Create a new column for standard errors
+sq$lower_ci <- rep(NA, nrow(sq))            # Create a new column for lower confidence intervals
+sq$upper_ci <- rep(NA, nrow(sq))            # Create a new column for upper confidence intervals
+sq$weight <- rep(NA, nrow(sq))              # Create a new column for weights
+
+for (i in 1:nrow(sq)) {
+  grp1m <- sq$e_m[i]
+  grp2m <- sq$c_m[i]
+  grp1sd <- sq$e_sd[i]
+  grp2sd <- sq$c_sd[i]
+  grp1n <- sq$e_n[i]
+  grp2n <- sq$c_n[i]
+
+  # Calculate effect size
+  d <- esc_mean_sd(grp1m = grp1m, grp2m = grp2m, 
+                   grp1sd = grp1sd, grp2sd = grp2sd, 
+                   grp1n = grp1n, grp2n = grp2n, es.type = "d")
+
+  # Store
+  sq$effect_size[i] <- d$es
+  sq$standard_error[i] <- d$se
+  sq$lower_ci[i] <- d$ci.lo
+  sq$upper_ci[i] <- d$ci.hi
+  sq$weight[i] <- d$w
+  
+  # Check the direction and change the sign if the direction evaluates to "Lower better"
+  if (sq$direction[i] == "Lower better") {
+    sq$effect_size[i] <- -sq$effect_size[i]
+  }
+}
+```
+
+```{r Meta Analysis of melatonin for sleep quality}
+m.sq <- metagen(TE = effect_size, #d value of each study
+                 seTE = standard_error, #the standard error of d
+                 studlab = author, #author or publication name
+                 data = sq, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Melatonin for sleep quality")
+
+summary(m.sq)
+```
+
+```{r SQ Forest Plot}
+png(file = "SQForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.sq, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.sq$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.sq$TE.fixed, "\n")
+```
+```{r Subgroup analysis of SQ: rob}
+m.rob <- update.meta(m.sq, 
+            subgroup = RoB, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sq.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+```{r Subgroup analysis of SQ: tnc}
+m.tnc.rob <- update.meta(m.sq, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sq.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of SQ: dose}
+m.dose.sq <- update.meta(m.sq, 
+            subgroup = dose_cat, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.dose.sq, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sq.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of SQ: comparator}
+m.com.sq <- update.meta(m.sq, 
+            subgroup = comparator, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.com.sq, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sq.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+```{r Subgroup analysis of SQ: environment}
+m.env.sq <- update.meta(m.sq, 
+            subgroup = environment, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.env.sq, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sq.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of SQ: RoB}
+m.sq.rob <- update.meta(m.sq, 
+            subgroup = RoB, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.sq.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sq.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+##### Sleep efficiency
+
+```{r Import data for sleep efficiency}
+se <- read_excel("C:/Users/User/Desktop/meta-analysis/mmad.xlsx", 
+    sheet = "SleepEfficiency")
+```
+
+```{r Calculate effect size for each study of sleep efficiency}
+se$effect_size <- NA_real_  # Create a new column for mean differences
+se$standard_error <- NA_real_  # Create a new column for standard errors
+
+for (i in 1:nrow(se)) {
+  x1 <- se$e_m[i]
+  x2 <- se$c_m[i]
+  s1 <- se$e_sd[i]
+  s2 <- se$c_sd[i]
+  n1 <- se$e_n[i]
+  n2 <- se$c_n[i]
+  
+  # Calculate effect size
+  MD <- x1 - x2
+
+  s_pooled <- sqrt(
+    (((n1 - 1) * s1^2) + ((n2 - 1) * s2^2)) / ((n1 - 1) + (n2 - 1))
+  )
+
+  # Calculate the standard error
+  se_standard_error <- s_pooled * sqrt((1 / n1) + (1 / n2))
+
+  se$effect_size[i] <- MD
+  se$standard_error[i] <- se_standard_error
+}
+```
+
+```{r Meta Analysis of melatonin for sleep efficiency}
+m.se <- metagen(TE = effect_size, #md value of each study
+                 seTE = standard_error, #the standard error of md
+                 studlab = author, #author or publication name
+                 data = se, #dataset
+                 sm = "MD", #summary measure, mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Melatonin for sleep efficiency")
+
+summary(m.se)
+```
+
+```{r SE Forest Plot}
+png(file = "SEForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.se, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.se$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.se$TE.fixed, "\n")
+```
+```{r Subgroup analysis of se: tnc}
+m.tnc.rob <- update.meta(m.se, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.se.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of se: dose}
+m.dose.se <- update.meta(m.se, 
+            subgroup = dose_cat, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.dose.se, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.se.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of se: comparator}
+m.com.se <- update.meta(m.se, 
+            subgroup = comparator, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.com.se, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.se.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+```{r Subgroup analysis of se: environment}
+m.env.se <- update.meta(m.se, 
+            subgroup = environment, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.env.se, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.se.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of se: RoB}
+m.se.rob <- update.meta(m.se, 
+            subgroup = RoB, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.se.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.se.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+
+##### Sleep latency
+```{r Import data for sleep latency}
+library(readxl)
+sl <- read_excel("C:/Users/User/Desktop/meta-analysis/mmad.xlsx", 
+    sheet = "SleepLatency")
+```
+
+```{r Calculate effect size for each study of sleep latency}
+sl$effect_size <- rep(NA, nrow(sl))         # Create a new column for effect sizes
+sl$standard_error <- rep(NA, nrow(sl))      # Create a new column for standard errors
+sl$lower_ci <- rep(NA, nrow(sl))            # Create a new column for lower confidence intervals
+sl$upper_ci <- rep(NA, nrow(sl))            # Create a new column for upper confidence intervals
+sl$weight <- rep(NA, nrow(sl))              # Create a new column for weights
+
+for (i in 1:nrow(sl)) {
+  grp1m <- sl$e_m[i]
+  grp2m <- sl$c_m[i]
+  grp1sd <- sl$e_sd[i]
+  grp2sd <- sl$c_sd[i]
+  grp1n <- sl$e_n[i]
+  grp2n <- sl$c_n[i]
+
+  # Calculate effect size
+  d <- esc_mean_sd(grp1m = grp1m, grp2m = grp2m, 
+                   grp1sd = grp1sd, grp2sd = grp2sd, 
+                   grp1n = grp1n, grp2n = grp2n, es.type = "d")
+
+  # Store
+  sl$effect_size[i] <- d$es
+  sl$standard_error[i] <- d$se
+  sl$lower_ci[i] <- d$ci.lo
+  sl$upper_ci[i] <- d$ci.hi
+  sl$weight[i] <- d$w
+  
+  # Check the direction and change the sign if the direction evaluates to "Lower better"
+  if (sl$direction[i] == "Lower is better") {
+    sl$effect_size[i] <- -sl$effect_size[i]
+  }
+}
+```
+
+```{r Meta Analysis of melatonin for sleep latency}
+m.sl <- metagen(TE = effect_size, #d value of each study
+                 seTE = standard_error, #the standard error of d
+                 studlab = author, #author or publication name
+                 data = sl, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Melatonin for sleep latency")
+
+summary(m.sl)
+```
+
+```{r sl Forest Plot}
+png(file = "slForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.sl, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.sl$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.sl$TE.fixed, "\n")
+```
+```{r Subgroup analysis of sl: tnc}
+m.tnc.rob <- update.meta(m.sl, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sl.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of sl: dose}
+m.dose.sl <- update.meta(m.sl, 
+            subgroup = dose_cat, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.dose.sl, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sl.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of sl: comparator}
+m.com.sl <- update.meta(m.sl, 
+            subgroup = comparator, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.com.sl, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sl.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of sl: environment}
+m.env.sl <- update.meta(m.sl, 
+            subgroup = environment, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.env.sl, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sl.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of sl: RoB}
+m.sl.rob <- update.meta(m.sl, 
+            subgroup = RoB, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.sl.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.sl.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+#### Caregiver Burden
+```{r Import data for caregiver burden}
+library(readxl)
+cb <- read_excel("C:/Users/User/Desktop/meta-analysis/mmad.xlsx", 
+    sheet = "CaregiverBurden")
+```
+
+```{r Calculate effect size for each study of caregiver burden}
+cb$effect_size <- rep(NA, nrow(cb))         # Create a new column for effect sizes
+cb$standard_error <- rep(NA, nrow(cb))      # Create a new column for standard errors
+cb$lower_ci <- rep(NA, nrow(cb))            # Create a new column for lower confidence intervals
+cb$upper_ci <- rep(NA, nrow(cb))            # Create a new column for upper confidence intervals
+cb$weight <- rep(NA, nrow(cb))              # Create a new column for weights
+
+for (i in 1:nrow(cb)) {
+  grp1m <- cb$e_m[i]
+  grp2m <- cb$c_m[i]
+  grp1sd <- cb$e_sd[i]
+  grp2sd <- cb$c_sd[i]
+  grp1n <- cb$e_n[i]
+  grp2n <- cb$c_n[i]
+
+  # Calculate effect size
+  d <- esc_mean_sd(grp1m = grp1m, grp2m = grp2m, 
+                   grp1sd = grp1sd, grp2sd = grp2sd, 
+                   grp1n = grp1n, grp2n = grp2n, es.type = "d")
+
+  # Store
+  cb$effect_size[i] <- d$es
+  cb$standard_error[i] <- d$se
+  cb$lower_ci[i] <- d$ci.lo
+  cb$upper_ci[i] <- d$ci.hi
+  cb$weight[i] <- d$w
+  
+  # Check the direction and change the sign if the direction evaluates to "Lower better"
+  if (cb$direction[i] == "Lower is better") {
+    cb$effect_size[i] <- -cb$effect_size[i]
+  }
+}
+```
+
+```{r Meta Analysis of melatonin for caregiver burden}
+m.cb <- metagen(TE = effect_size, #d value of each study
+                 seTE = standard_error, #the standard error of d
+                 studlab = author, #author or publication name
+                 data = cb, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Melatonin for caregiver burden")
+
+summary(m.cb)
+```
+
+```{r cb Forest Plot}
+png(file = "cbForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.cb, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.cb$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.cb$TE.fixed, "\n")
+```
+```{r Subgroup analysis of cb: tnc}
+m.tnc.rob <- update.meta(m.cb, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.cb.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+#### Quality of Life
+```{r Import data for quality of life}
+library(readxl)
+qol <- read_excel("C:/Users/User/Desktop/meta-analysis/mmad.xlsx", 
+    sheet = "QoL")
+```
+
+```{r Calculate effect size for each study of QoL}
+qol$effect_size <- rep(NA, nrow(qol))         # Create a new column for effect sizes
+qol$standard_error <- rep(NA, nrow(qol))      # Create a new column for standard errors
+qol$lower_ci <- rep(NA, nrow(qol))            # Create a new column for lower confidence intervals
+qol$upper_ci <- rep(NA, nrow(qol))            # Create a new column for upper confidence intervals
+qol$weight <- rep(NA, nrow(qol))              # Create a new column for weights
+
+for (i in 1:nrow(qol)) {
+  grp1m <- qol$e_m[i]
+  grp2m <- qol$c_m[i]
+  grp1sd <- qol$e_sd[i]
+  grp2sd <- qol$c_sd[i]
+  grp1n <- qol$e_n[i]
+  grp2n <- qol$c_n[i]
+
+  # Calculate effect size
+  d <- esc_mean_sd(grp1m = grp1m, grp2m = grp2m, 
+                   grp1sd = grp1sd, grp2sd = grp2sd, 
+                   grp1n = grp1n, grp2n = grp2n, es.type = "d")
+
+  # Store
+  qol$effect_size[i] <- d$es
+  qol$standard_error[i] <- d$se
+  qol$lower_ci[i] <- d$ci.lo
+  qol$upper_ci[i] <- d$ci.hi
+  qol$weight[i] <- d$w
+  
+  # Check the direction and change the sign if the direction evaluates to "Lower better"
+  if (qol$direction[i] == "Lower is better") {
+    qol$effect_size[i] <- -qol$effect_size[i]
+  }
+}
+```
+
+```{r Meta Analysis of melatonin for quality of life}
+m.qol <- metagen(TE = effect_size, #d value of each study
+                 seTE = standard_error, #the standard error of d
+                 studlab = author, #author or publication name
+                 data = qol, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Melatonin for Quality of Life")
+
+summary(m.qol)
+```
+
+```{r qol Forest Plot}
+png(file = "qolForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.qol, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.qol$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.qol$TE.fixed, "\n")
+```
+```{r Subgroup analysis of qol: tnc}
+m.tnc.rob <- update.meta(m.qol, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.qol.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+
+#### Depression
+```{r Import data for depression}
+library(readxl)
+de <- read_excel("C:/Users/User/Desktop/meta-analysis/mmad.xlsx", 
+    sheet = "Depression")
+```
+
+```{r Calculate effect size for each study of de}
+de$effect_size <- rep(NA, nrow(de))         # Create a new column for effect sizes
+de$standard_error <- rep(NA, nrow(de))      # Create a new column for standard errors
+de$lower_ci <- rep(NA, nrow(de))            # Create a new column for lower confidence intervals
+de$upper_ci <- rep(NA, nrow(de))            # Create a new column for upper confidence intervals
+de$weight <- rep(NA, nrow(de))              # Create a new column for weights
+
+for (i in 1:nrow(de)) {
+  grp1m <- de$e_m[i]
+  grp2m <- de$c_m[i]
+  grp1sd <- de$e_sd[i]
+  grp2sd <- de$c_sd[i]
+  grp1n <- de$e_n[i]
+  grp2n <- de$c_n[i]
+
+  # Calculate effect size
+  d <- esc_mean_sd(grp1m = grp1m, grp2m = grp2m, 
+                   grp1sd = grp1sd, grp2sd = grp2sd, 
+                   grp1n = grp1n, grp2n = grp2n, es.type = "d")
+
+  # Store
+  de$effect_size[i] <- d$es
+  de$standard_error[i] <- d$se
+  de$lower_ci[i] <- d$ci.lo
+  de$upper_ci[i] <- d$ci.hi
+  de$weight[i] <- d$w
+  
+  # Check the direction and change the sign if the direction evaluates to "Lower better"
+  if (de$direction[i] == "Lower is better") {
+    de$effect_size[i] <- -de$effect_size[i]
+  }
+}
+```
+
+```{r Meta Analysis of melatonin for depression}
+m.de <- metagen(TE = effect_size, #d value of each study
+                 seTE = standard_error, #the standard error of d
+                 studlab = author, #author or publication name
+                 data = de, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Melatonin for Quality of Life")
+
+summary(m.de)
+```
+
+```{r de Forest Plot}
+png(file = "deForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.de, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.de$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.de$TE.fixed, "\n")
+```
+```{r Subgroup analysis of de: tnc}
+m.tnc.rob <- update.meta(m.de, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.de.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+```{r Subgroup analysis of de: dose}
+m.dose.de <- update.meta(m.de, 
+            subgroup = dose_cat, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.dose.de, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.de.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of de: comparator}
+m.com.de <- update.meta(m.de, 
+            subgroup = comparator, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.com.de, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.de.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of de: environment}
+m.env.de <- update.meta(m.de, 
+            subgroup = environment, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.env.de, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.de.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of de: RoB}
+m.de.rob <- update.meta(m.de, 
+            subgroup = RoB, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.de.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.de.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+
+
+#### Cognition
+```{r Import data for cognition}
+library(readxl)
+cog <- read_excel("C:/Users/User/desktop/meta-analysis/mmad.xlsx", 
+    sheet = "Cognition")
+```
+
+```{r Calculate effect size for each study of cognition}
+cog$effect_size <- rep(NA, nrow(cog))         # Create a new column for effect sizes
+cog$standard_error <- rep(NA, nrow(cog))      # Create a new column for standard errors
+cog$lower_ci <- rep(NA, nrow(cog))            # Create a new column for lower confidence intervals
+cog$upper_ci <- rep(NA, nrow(cog))            # Create a new column for upper confidegnce intervals
+cog$weight <- rep(NA, nrow(cog))              # Create a new column for weights
+
+for (i in 1:nrow(cog)) {
+  grp1m <- cog$e_m[i]
+  grp2m <- cog$c_m[i]
+  grp1sd <- cog$e_sd[i]
+  grp2sd <- cog$c_sd[i]
+  grp1n <- cog$e_n[i]
+  grp2n <- cog$c_n[i]
+
+  # Calculate effect size
+  d <- esc_mean_sd(grp1m = grp1m, grp2m = grp2m, 
+                   grp1sd = grp1sd, grp2sd = grp2sd, 
+                   grp1n = grp1n, grp2n = grp2n, es.type = "d")
+
+  # Store
+  cog$effect_size[i] <- d$es
+  cog$standard_error[i] <- d$se
+  cog$lower_ci[i] <- d$ci.lo
+  cog$upper_ci[i] <- d$ci.hi
+  cog$weight[i] <- d$w
+  
+  # Check the direction and change the sign if the direction evaluates to "Lower better"
+  if (cog$direction[i] == "Lower is better") {
+    cog$effect_size[i] <- -cog$effect_size[i]
+  }
+}
+```
+
+```{r Meta Analysis of melatonin for cog}
+m.cog <- metagen(TE = effect_size, #d value of each study
+                 seTE = standard_error, #the standard error of d
+                 studlab = author, #author or publication name
+                 data = cog, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects mocogl meta-analysis should be calculated
+                 random = TRUE, #if a random-effects mocogl meta-analysis should be calculated
+                 method.tau = "DL", #cogrSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects mocogl
+                 title = "Melatonin for cognition")
+
+summary(m.cog)
+```
+
+```{r cog Forest Plot}
+png(file = "cogForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.cog, sortvar = author, layout = "JAMA",
+            label.right = "Favours melatonin",
+            label.left = "Favours control", test.overall.random = TRUE)
+
+dev.off()
+```
+
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.cog$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.cog$TE.fixed, "\n")
+```
+```{r Subgroup analysis of cog: tnc}
+m.tnc.rob <- update.meta(m.cog, 
+            subgroup = tnc, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.tnc.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.cog.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+```{r Subgroup analysis of cog: dose}
+m.dose.cog <- update.meta(m.cog, 
+            subgroup = dose_cat, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.dose.cog, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.cog.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of cog: comparator}
+m.com.cog <- update.meta(m.cog, 
+            subgroup = comparator, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.com.cog, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.cog.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of cog: environment}
+m.env.cog <- update.meta(m.cog, 
+            subgroup = environment, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.env.cog, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.cog.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+```{r Subgroup analysis of cog: RoB}
+m.cog.rob <- update.meta(m.cog, 
+            subgroup = RoB, 
+            tau.common = FALSE)
+
+# Show summary results for subgroups with at least two studies
+forest(m.cog.rob, sortvar = -TE, layout = "subgroup", common = FALSE, test.overall.random = FALSE, test.subgroup = FALSE)
+# Show all results for all subgroups
+# forest(m.cog.rob, sortvar = -TE,  random = FALSE, layout = "JAMA")
+```
+
+## Extra information and templates
+
+### Funnel plots
+
+```{r}
+# Define fill colors for contour
+col.contour = c("gray75", "gray85", "gray95")
+
+# Generate funnel plot
+funnel.meta(m.sq, xlim = c(-2, 2),
+            studlab = TRUE)
+
+# Add a title
+title("Funnel Plot (Melatonin for Sleep Quality)")
+```
+```{r}
+funnel.meta(m.se,
+            xlim = c(-20, 20),
+            studlab = TRUE)
+
+# Add title
+title("Funnel Plot (Melatonin for Sleep Efficiency)")
+```
+```{r}
+funnel.meta(m.sl,
+            xlim = c(-2, 2),
+            studlab = TRUE)
+
+# Add title
+title("Funnel Plot (Melatonin for Sleep Latency)")
+```
+```{r}
+funnel.meta(m.cog,
+            xlim = c(-2, 2),
+            studlab = TRUE)
+
+# Add title
+title("Funnel Plot (Melatonin for Cognition)")
+```
+```{r}
+funnel.meta(m.de,
+            xlim = c(-2, 2),
+            studlab = TRUE)
+
+# Add title
+title("Funnel Plot (Melatonin for Depression)")
+```
+```{r}
+funnel.meta(m.qol,
+            xlim = c(-2, 2),
+            studlab = TRUE)
+
+# Add title
+title("Funnel Plot (Melatonin for Quality of Life)")
+```
+```{r}
+funnel.meta(m.cb,
+            xlim = c(-2, 2),
+            studlab = TRUE)
+
+# Add title
+title("Funnel Plot (Melatonin for Caregiver Burden)")
+```
+
+
+### Perform a template meta analysis with ThirdWave data
+
+Use pre-calculated effect size data to create a template for meta-analysis. 
+
+These effect sizes are Hedges' g. 
+
+```{r ThirdWave}
+data(ThirdWave)
+glimpse(ThirdWave)
+```
+
+```{r Example Meta Analysis}
+m.gen <- metagen(TE = TE, #g value of each study
+                 seTE = seTE, #the standard error of g
+                 studlab = Author, #author or publication name
+                 data = ThirdWave, #dataset
+                 sm = "SMD", #summary measure, standardized mean difference
+                 fixed = FALSE, #if a fixed-effects model meta-analysis should be calculated
+                 random = TRUE, #if a random-effects model meta-analysis should be calculated
+                 method.tau = "DL", #DerSimonian-Laird method
+                 hakn = FALSE, #if the Knapp-Hartung runs when using the random-effects model
+                 title = "Third Wave Psychotherapies")
+
+summary(m.gen)
+```
+To get just the pooled effects, the following can be run. We can get both fixed and random effects because `meta`’s functions always also calculate results for the fixed-effect model internally. 
+```{r}
+cat("Pooled effect assuming a random-effects model:", m.gen$TE.random, "\n")
+cat("Pooled effect assuming a fixed-effects model:", m.gen$TE.fixed, "\n")
+```
+```{r Forest Plot}
+png(file = "ExampleForestplot.png", width = 2800, height = 2400, res = 300)
+
+forest.meta(m.gen, sortvar = TE, layout = "JAMA")
+
+dev.off()
+```
+We can conduct subgroup analyses by updating the meta analysis in question to reflect the subgroups. The update will inherit everything specified in the original analysis (Methods, Fixed-Random effects).
+
+```{r Subgroup}
+m.genSub <- update.meta(m.gen, 
+            subgroup = RiskOfBias, 
+            tau.common = FALSE)
+
+```
+
+```{r Forest plot for subgroup meta-analysis}
+# Show summary results for subgroups with at least two studies
+forest(m.genSub, sortvar = -TE, layout = "subgroup", common = FALSE)
+# Show all results for all subgroups
+forest(m.genSub, sortvar = -TE,  random = FALSE)
+```
+
+#### Hedges' G - Small sample size bias
+
+We did not apply corrections to any effect sizes. If we wanted to correct for Small Sample Bias, we could use *Hedges’ g*, especially when n ≤ 20 (L. V. Hedges 1981). This will push the estimate of SMD downward. 
+
+```{r Hedges G}
+# Load esc package
+library(esc)
+
+# Define uncorrected SMD and sample size n
+SMD <- 0.5
+n <- 30
+
+# Convert to Hedges g
+g <- hedges_g(SMD, n)
+cat("Hedges g:", g, "\n")
+```
+#### Unreliability
+
+If we have an estimate of the reliability (where 1 - reliability is unreliability) of a measurement, we may correct for attenuation to get a better estimate of the true effect size.
+
+we can only perform a correction for unreliability if the reliability coefficients rxx and ryy are reported in each study.
+
+You could also use reliability coefficients published for a certain instrument, but it might distort the results. 
+
+Also, you have to correct ALL estimates in the meta analysis. 
+
+```{r Unreliability corrections}
+
+# Define uncorrected correlation and SMD with their standard error
+r_xy <- 0.34
+se_r_xy <- 0.09
+smd <- 0.65
+se_smd <- 0.18
+
+# Define reliabilities of x and y
+r_xx <- 0.8
+r_yy <- 0.7
+
+# Correct SMD for unreliability in x
+smd_c <- smd/sqrt(r_xx)
+se <- se_smd/sqrt(r_xx)
+
+# Correct correlation for unreliability in x and y
+r_xy_c <- r_xy/(sqrt(r_xx)*sqrt(r_yy))
+se_c <- se_r_xy/(sqrt(r_xx)*sqrt(r_yy))
+
+# Show values
+cat("Corrected SMD:", smd_c, "\n")
+cat("Uncorrected Standard Error:", se, "\n")
+cat("Corrected Correlation:", r_xy_c, "\n")
+cat("Corrected Standard Error", se_c, "\n")
+```
+
+#### Range restriction
+
+Range restriction occurs when the variation of a variable is smaller than it is in the actual population of interest. This happens if sampling is too small or insufficient. 
+
+You can correct for a restricted standard deviation if you know the standard deviation in the population of interest. 
+A correction of range restriction may be necessary when the range of several studies is heavily restricted. You can apply this correction to all studies in the meta analysis if you want. 
+
+```{r Range restriction}
+# Define correlation to correct
+r_xy <- 0.34
+se_r_xy <- 0.09
+
+# Define restricted and unrestricted SD
+sd_restricted <- 11
+sd_unrestricted <- 18
+
+# Calculate U
+U <- sd_unrestricted/sd_restricted
+
+# Correct the correlation
+r_xy_c <- (U*r_xy)/sqrt((U^2-1)*r_xy^2+1)
+
+# Correct the SE
+se_r_xy_c <- (r_xy_c/r_xy)*se_r_xy
+
+cat("Corrected correlation:", r_xy_c, "\n")
+cat("Corrected standard error:", se_r_xy_c, "\n")
+```
+
