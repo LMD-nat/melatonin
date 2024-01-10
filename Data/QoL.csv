@@ -1,0 +1,4 @@
+"study_id","author","e_m","e_sd","e_n","c_m","c_sd","c_n","revman_weight","revman_smd_ci","RoB","tnc","dose_cat","dose_mg","comparator","environment","follow_up_time_weeks","direction"
+1,"Asayama 2003",27.5,21.2,16,29.6,26.5,18,0.363,"-0.08 [-0.76, 0.59]","Low","AD","Less than 5mg",3,"Placebo","Hospital",4,"Lower is better"
+10,"Drake 2018",67.5,18.97,16,61,22.308,15,0.327,"-0.31 [-1.02, 0.40]","Low","MS","More or equal to 5mg",2,"Placebo","Community",6,"Higher is better"
+12,"Gilat 2020",68,26.17,15,69.64,22.24,14,0.31,"-0.07 [-0.79, 0.66]","Low","PD","Less than 5mg",4,"Placebo","Community",8,"Lower is better"

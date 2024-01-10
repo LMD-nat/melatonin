@@ -1,0 +1,5 @@
+"study_id","author","e_m","e_sd","e_n","c_m","c_sd","c_n","revman_weight","revman_smd_ci","RoB","tnc","dose_cat","dose_mg","comparator","environment","follow_up_time_weeks","direction"
+3,"Callegari 2016",3.9,1.038,12,2.1,0.692,12,0.189,"1.97 [0.96, 2.98]","Some concerns","FTD","More or equal to 5mg",10,"Agomelatine","Community",10,"Lower is better"
+22,"Morales Delgado 2018",25.9,18.8,16,32.1,19.8,15,0.238,"-0.31 [-1.02, 0.40]","Low","AD","More or equal to 5mg",5,"Placebo","Community",8,"Lower is better"
+23,"Riemersma 2008 A",4.6,5.6,46,6,5.9,40,0.285,"-0.24 [-0.67, 0.18]","Low","AD","Less than 5mg",2.5,"Placebo","Hospital",6,"Lower is better"
+24,"Riemersma 2008 B",4.7,6.5,44,5.1,6,47,0.287,"-0.06 [-0.47, 0.35]","Low","AD","Less than 5mg",2.5,"Light","Hospital",6,"Lower is better"
